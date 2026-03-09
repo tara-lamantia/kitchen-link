@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "scripts": {
     "dev": "next dev",
@@ -19,7 +19,8 @@
     "@instantdb/react": "^0.22.155",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -29,7 +30,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "instant-cli": "^0.22.155",
-    "tailwindcss": "^4",
-    "typescript": "5.9.3"
+    "tailwindcss": "^4"
   }
 }

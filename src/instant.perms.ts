@@ -28,4 +28,3 @@ const rules = {
 } satisfies InstantRules;
 
 export default rules;
-

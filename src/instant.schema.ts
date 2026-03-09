@@ -2,6 +2,9 @@ import { i } from "@instantdb/react";
 
 const _schema = i.schema({
   entities: {
+    $users: i.entity({
+      email: i.string().optional(),
+    }),
     recipes: i.entity({
       title: i.string(),
       vibe: i.string(),
@@ -61,4 +64,3 @@ const _schema = i.schema({
 export type AppSchema = typeof _schema;
 
 export default _schema;
-
