@@ -51,7 +51,7 @@ export default function RecipeDetailPage() {
             $: { where: { id } },
             author: {},
             notes: {
-              $: { order: { createdAt: "desc" } },
+              $: { order: { serverCreatedAt: "desc" } },
               author: {},
             },
           },

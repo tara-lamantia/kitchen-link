@@ -25,7 +25,7 @@ export default function Home() {
     error,
   } = db.useQuery({
     recipes: {
-      $: { order: { createdAt: "desc" } },
+      $: { order: { serverCreatedAt: "desc" } },
       author: {},
     },
   });
@@ -40,7 +40,7 @@ export default function Home() {
           recipes: {
             $: {
               where: { "author.id": user.id },
-              order: { createdAt: "desc" },
+              order: { serverCreatedAt: "desc" },
             },
           },
         }

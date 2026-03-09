@@ -21,7 +21,7 @@ export default function SearchPage() {
     error,
   } = db.useQuery({
     recipes: {
-      $: { order: { createdAt: "desc" } },
+      $: { order: { serverCreatedAt: "desc" } },
       author: {},
     },
   });
