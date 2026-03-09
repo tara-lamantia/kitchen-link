@@ -33,6 +33,8 @@ type Recipe = {
   instructions: string;
   author?: RecipeAuthor | null;
   notes?: Note[];
+  favorites?: { id: string; user?: { id: string } | null }[];
+  cooked?: { id: string; user?: { id: string } | null }[];
 };
 
 export default function RecipeDetailPage() {
@@ -54,6 +56,8 @@ export default function RecipeDetailPage() {
               $: { order: { serverCreatedAt: "desc" } },
               author: {},
             },
+            favorites: { user: {} },
+            cooked: { user: {} },
           },
         }
       : null,
@@ -61,6 +65,16 @@ export default function RecipeDetailPage() {
 
   const recipe = (data?.recipes?.[0] ?? null) as Recipe | null;
   const notes: Note[] = recipe?.notes ?? [];
+  const favorites = recipe?.favorites ?? [];
+  const cooked = recipe?.cooked ?? [];
+  const favoriteCount = favorites.length;
+  const cookedCount = cooked.length;
+  const isFavorited =
+    !!user && favorites.some((f) => f.user && String(f.user.id) === String(user.id));
+  const myCookedId = user
+    ? cooked.find((c) => c.user && String(c.user.id) === String(user.id))?.id
+    : null;
+  const hasCooked = !!myCookedId;
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [title, setTitle] = React.useState("");
@@ -193,6 +207,37 @@ export default function RecipeDetailPage() {
     }
   };
 
+  const handleToggleFavorite = async () => {
+    if (!id || !user) return;
+    if (isFavorited) {
+      const fav = favorites.find((f) => f.user && String(f.user.id) === String(user.id));
+      if (fav) await db.transact(db.tx.favorites[fav.id].delete());
+    } else {
+      const favId = instantId();
+      await db.transact(
+        db.tx.favorites[favId].create({}).link({
+          recipe: id as string,
+          user: user.id,
+        }),
+      );
+    }
+  };
+
+  const handleToggleCooked = async () => {
+    if (!id || !user) return;
+    if (hasCooked && myCookedId) {
+      await db.transact(db.tx.cooked[myCookedId].delete());
+    } else {
+      const cookedId = instantId();
+      await db.transact(
+        db.tx.cooked[cookedId].create({}).link({
+          recipe: id as string,
+          user: user.id,
+        }),
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -273,6 +318,49 @@ export default function RecipeDetailPage() {
                   </button>
                 </div>
               )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-brown-100 pt-4">
+              <span className="text-sm text-brown-600">
+                {favoriteCount === 0
+                  ? "No favorites yet"
+                  : favoriteCount === 1
+                    ? "1 favorite"
+                    : `${favoriteCount} favorites`}
+              </span>
+              {user ? (
+                <button
+                  type="button"
+                  onClick={handleToggleFavorite}
+                  className={
+                    isFavorited
+                      ? "rounded-full border border-sage-300 bg-sage-100 px-3 py-1.5 text-xs font-medium text-sage-800 hover:bg-sage-200"
+                      : "rounded-full border border-brown-200 px-3 py-1.5 text-xs font-medium text-brown-700 hover:bg-brown-50"
+                  }
+                >
+                  {isFavorited ? "Unfavorite" : "Favorite"}
+                </button>
+              ) : null}
+              <span className="text-sm text-brown-600">
+                {cookedCount === 0
+                  ? "No one has cooked this yet"
+                  : cookedCount === 1
+                    ? "1 person cooked this"
+                    : `${cookedCount} people cooked this`}
+              </span>
+              {user ? (
+                <button
+                  type="button"
+                  onClick={handleToggleCooked}
+                  className={
+                    hasCooked
+                      ? "rounded-full border border-sage-300 bg-sage-100 px-3 py-1.5 text-xs font-medium text-sage-800 hover:bg-sage-200"
+                      : "rounded-full border border-brown-200 px-3 py-1.5 text-xs font-medium text-brown-700 hover:bg-brown-50"
+                  }
+                >
+                  {hasCooked ? "You cooked this" : "Cooked this"}
+                </button>
+              ) : null}
             </div>
 
             <div className="mt-6 grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">

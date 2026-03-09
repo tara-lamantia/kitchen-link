@@ -17,6 +17,8 @@ const _schema = i.schema({
       text: i.string(),
       createdAt: i.date(),
     }),
+    favorites: i.entity({}),
+    cooked: i.entity({}),
   },
   links: {
     recipeAuthor: {
@@ -56,6 +58,58 @@ const _schema = i.schema({
         on: "$users",
         has: "many",
         label: "notes",
+      },
+    },
+    favoriteRecipe: {
+      forward: {
+        on: "favorites",
+        has: "one",
+        label: "recipe",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "recipes",
+        has: "many",
+        label: "favorites",
+      },
+    },
+    favoriteUser: {
+      forward: {
+        on: "favorites",
+        has: "one",
+        label: "user",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "$users",
+        has: "many",
+        label: "favorites",
+      },
+    },
+    cookedRecipe: {
+      forward: {
+        on: "cooked",
+        has: "one",
+        label: "recipe",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "recipes",
+        has: "many",
+        label: "cooked",
+      },
+    },
+    cookedUser: {
+      forward: {
+        on: "cooked",
+        has: "one",
+        label: "user",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "$users",
+        has: "many",
+        label: "cooked",
       },
     },
   },

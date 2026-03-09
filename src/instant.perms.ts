@@ -25,6 +25,28 @@ const rules = {
       isOwner: "auth.id != null && auth.id in data.ref('author.id')",
     },
   },
+  favorites: {
+    allow: {
+      view: "true",
+      create: "isAuthed",
+      delete: "isOwner",
+    },
+    bind: {
+      isAuthed: "auth.id != null",
+      isOwner: "auth.id != null && auth.id in data.ref('user.id')",
+    },
+  },
+  cooked: {
+    allow: {
+      view: "true",
+      create: "isAuthed",
+      delete: "isOwner",
+    },
+    bind: {
+      isAuthed: "auth.id != null",
+      isOwner: "auth.id != null && auth.id in data.ref('user.id')",
+    },
+  },
 } satisfies InstantRules;
 
 export default rules;
