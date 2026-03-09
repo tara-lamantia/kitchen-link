@@ -1,0 +1,210 @@
+'use client';
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { db } from "@/lib/db";
+import { SETUPS, VIBES } from "@/lib/constants";
+import { id } from "@instantdb/react";
+
+export default function NewRecipePage() {
+  const router = useRouter();
+  const { user, isLoading } = db.useAuth();
+
+  React.useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [isLoading, user, router]);
+
+  const [title, setTitle] = React.useState("");
+  const [vibe, setVibe] = React.useState<string>(VIBES[0]);
+  const [setup, setSetup] = React.useState<string>(SETUPS[0]);
+  const [ingredients, setIngredients] = React.useState("");
+  const [instructions, setInstructions] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  if (isLoading || !user) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-sm text-brown-500">
+          {isLoading ? "Checking your session…" : "Redirecting to login…"}
+        </p>
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !ingredients.trim() || !instructions.trim()) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    const recipeId = id();
+
+    try {
+      await db.transact(
+        db.tx.recipes[recipeId]
+          .create({
+            title: title.trim(),
+            vibe,
+            setup,
+            ingredients: ingredients.trim(),
+            instructions: instructions.trim(),
+            createdAt: new Date(),
+          })
+          .link({ author: user.id }),
+      );
+      router.push(`/recipes/${recipeId}`);
+    } catch (err: unknown) {
+      const message =
+        (err as { body?: { message?: string } })?.body?.message ??
+        "Failed to save recipe. Please try again.";
+      setError(message);
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6 rounded-2xl border border-sand bg-white p-6 shadow-sm">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold text-brown-900">
+          Post a new recipe
+        </h1>
+        <p className="text-sm text-brown-600">
+          Capture the real version you cook in your kitchen—no food styling
+          required.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-1">
+          <label
+            htmlFor="title"
+            className="block text-sm font-medium text-brown-700"
+          >
+            Meal name
+          </label>
+          <input
+            id="title"
+            type="text"
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="block w-full rounded-lg border border-sand px-3 py-2 text-sm shadow-sm outline-none placeholder:text-brown-500 focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+            placeholder={`e.g. Mom's Sunday Sauce`}
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label
+              htmlFor="vibe"
+              className="block text-sm font-medium text-brown-700"
+            >
+              Vibe
+            </label>
+            <select
+              id="vibe"
+              value={vibe}
+              onChange={(e) => setVibe(e.target.value)}
+              className="block w-full rounded-lg border border-sand px-3 py-2 text-sm shadow-sm outline-none focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+            >
+              {VIBES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label
+              htmlFor="setup"
+              className="block text-sm font-medium text-brown-700"
+            >
+              Setup
+            </label>
+            <select
+              id="setup"
+              value={setup}
+              onChange={(e) => setSetup(e.target.value)}
+              className="block w-full rounded-lg border border-sand px-3 py-2 text-sm shadow-sm outline-none focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+            >
+              {SETUPS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label
+            htmlFor="ingredients"
+            className="block text-sm font-medium text-brown-700"
+          >
+            Ingredients
+          </label>
+          <textarea
+            id="ingredients"
+            required
+            rows={5}
+            value={ingredients}
+            onChange={(e) => setIngredients(e.target.value)}
+            className="block w-full resize-y rounded-lg border border-sand px-3 py-2 text-sm shadow-sm outline-none placeholder:text-brown-500 focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+            placeholder="- 1 cup rice
+- 2 eggs
+- 1 handful frozen peas"
+          />
+          <p className="text-xs text-brown-500">
+            Use one item per line so it&apos;s easy to scan on a phone.
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <label
+            htmlFor="instructions"
+            className="block text-sm font-medium text-brown-700"
+          >
+            Instructions
+          </label>
+          <textarea
+            id="instructions"
+            required
+            rows={6}
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            className="block w-full resize-y rounded-lg border border-sand px-3 py-2 text-sm shadow-sm outline-none placeholder:text-brown-500 focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+            placeholder="Short, realistic steps for a tired cook in a small apartment kitchen."
+          />
+        </div>
+
+        {error && <p className="text-xs text-red-600">{error}</p>}
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-full border border-sand px-4 py-2 text-sm font-medium text-brown-700 hover:bg-cream-100"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="rounded-full bg-sage-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:bg-sage-400"
+          >
+            {isSubmitting ? "Saving…" : "Save recipe"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
