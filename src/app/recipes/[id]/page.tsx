@@ -170,6 +170,29 @@ export default function RecipeDetailPage() {
     }
   };
 
+  const handleEditNote = async (noteId: string, newText: string) => {
+    if (!newText.trim()) return;
+    try {
+      await db.transact(db.tx.notes[noteId].update({ text: newText.trim() }));
+    } catch (err: unknown) {
+      const message =
+        (err as { body?: { message?: string } })?.body?.message ??
+        "Failed to update note.";
+      alert(message);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await db.transact(db.tx.notes[noteId].delete());
+    } catch (err: unknown) {
+      const message =
+        (err as { body?: { message?: string } })?.body?.message ??
+        "Failed to delete note.";
+      alert(message);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -450,7 +473,13 @@ export default function RecipeDetailPage() {
           )}
         </div>
 
-        <NotesList notes={notes} />
+        <NotesList
+          notes={notes}
+          currentUserId={user?.id}
+          currentUserEmail={user?.email}
+          onEditNote={handleEditNote}
+          onDeleteNote={handleDeleteNote}
+        />
 
         {user && (
           <form onSubmit={handleAddNote} className="space-y-2 pt-4">
