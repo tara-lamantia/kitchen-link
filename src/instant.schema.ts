@@ -19,7 +19,9 @@ const _schema = i.schema({
     }),
     favorites: i.entity({}),
     cooked: i.entity({}),
-    shopping_list: i.entity({}),
+    shopping_list: i.entity({
+      ingredientsOverride: i.string().optional(),
+    }),
   },
   links: {
     recipeAuthor: {

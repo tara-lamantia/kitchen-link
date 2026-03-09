@@ -51,6 +51,7 @@ const rules = {
     allow: {
       view: "isOwner",
       create: "isAuthed",
+      update: "isOwner",
       delete: "isOwner",
     },
     bind: {
