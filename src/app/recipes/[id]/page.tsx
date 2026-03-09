@@ -35,6 +35,7 @@ type Recipe = {
   notes?: Note[];
   favorites?: { id: string; user?: { id: string } | null }[];
   cooked?: { id: string; user?: { id: string } | null }[];
+  shopping_list?: { id: string; user?: { id: string } | null }[];
 };
 
 export default function RecipeDetailPage() {
@@ -58,6 +59,7 @@ export default function RecipeDetailPage() {
             },
             favorites: { user: {} },
             cooked: { user: {} },
+            shopping_list: { user: {} },
           },
         }
       : null,
@@ -75,6 +77,11 @@ export default function RecipeDetailPage() {
     ? cooked.find((c) => c.user && String(c.user.id) === String(user.id))?.id
     : null;
   const hasCooked = !!myCookedId;
+  const shoppingList = recipe?.shopping_list ?? [];
+  const myShoppingListItemId = user
+    ? shoppingList.find((s) => s.user && String(s.user.id) === String(user.id))?.id
+    : null;
+  const isOnShoppingList = !!myShoppingListItemId;
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [title, setTitle] = React.useState("");
@@ -238,6 +245,21 @@ export default function RecipeDetailPage() {
     }
   };
 
+  const handleToggleShoppingList = async () => {
+    if (!id || !user) return;
+    if (isOnShoppingList && myShoppingListItemId) {
+      await db.transact(db.tx.shopping_list[myShoppingListItemId].delete());
+    } else {
+      const itemId = instantId();
+      await db.transact(
+        db.tx.shopping_list[itemId].create({}).link({
+          recipe: id as string,
+          user: user.id,
+        }),
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -359,6 +381,19 @@ export default function RecipeDetailPage() {
                   }
                 >
                   {hasCooked ? "You cooked this" : "Cooked this"}
+                </button>
+              ) : null}
+              {user ? (
+                <button
+                  type="button"
+                  onClick={handleToggleShoppingList}
+                  className={
+                    isOnShoppingList
+                      ? "rounded-full border border-sage-300 bg-sage-100 px-3 py-1.5 text-xs font-medium text-sage-800 hover:bg-sage-200"
+                      : "rounded-full border border-brown-200 px-3 py-1.5 text-xs font-medium text-brown-700 hover:bg-brown-50"
+                  }
+                >
+                  {isOnShoppingList ? "Remove from list" : "Add to shopping list"}
                 </button>
               ) : null}
             </div>

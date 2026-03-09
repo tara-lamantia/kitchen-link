@@ -3,6 +3,9 @@ export const VIBES = [
   "Quick Prep",
   "Healthy",
   "Late Night",
+  "Meal Prep Sunday",
+  "Comfort Food",
+  "Snack Attack",
 ] as const;
 
 export type Vibe = (typeof VIBES)[number];

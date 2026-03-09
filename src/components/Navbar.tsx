@@ -37,6 +37,14 @@ export function Navbar() {
           </Link>
           {user && (
             <Link
+              href="/shopping-list"
+              className={navLinkClasses("/shopping-list")}
+            >
+              Shopping List
+            </Link>
+          )}
+          {user && (
+            <Link
               href="/recipes/new"
               className="hidden rounded-full bg-sage-600 px-3 py-1 text-sm font-medium text-white shadow-sm transition-colors hover:bg-sage-700 sm:inline-flex"
             >

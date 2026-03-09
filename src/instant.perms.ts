@@ -47,6 +47,17 @@ const rules = {
       isOwner: "auth.id != null && auth.id in data.ref('user.id')",
     },
   },
+  shopping_list: {
+    allow: {
+      view: "isOwner",
+      create: "isAuthed",
+      delete: "isOwner",
+    },
+    bind: {
+      isAuthed: "auth.id != null",
+      isOwner: "auth.id != null && auth.id in data.ref('user.id')",
+    },
+  },
 } satisfies InstantRules;
 
 export default rules;
