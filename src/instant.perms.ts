@@ -61,6 +61,18 @@ const rules = {
       isOwner: "auth.id != null && auth.id in data.ref('user.id')",
     },
   },
+  ratings: {
+    allow: {
+      view: "true",
+      create: "isAuthed",
+      update: "isOwner",
+      delete: "isOwner",
+    },
+    bind: {
+      isAuthed: "auth.id != null",
+      isOwner: "auth.id != null && auth.id in data.ref('user.id')",
+    },
+  },
   $users: {
     allow: {
       view: "isOwner",

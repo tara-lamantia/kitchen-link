@@ -23,6 +23,9 @@ const _schema = i.schema({
     shopping_list: i.entity({
       ingredientsOverride: i.string().optional(),
     }),
+    ratings: i.entity({
+      stars: i.number(),
+    }),
   },
   links: {
     recipeAuthor: {
@@ -140,6 +143,32 @@ const _schema = i.schema({
         on: "$users",
         has: "many",
         label: "shopping_list",
+      },
+    },
+    ratingRecipe: {
+      forward: {
+        on: "ratings",
+        has: "one",
+        label: "recipe",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "recipes",
+        has: "many",
+        label: "ratings",
+      },
+    },
+    ratingUser: {
+      forward: {
+        on: "ratings",
+        has: "one",
+        label: "user",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "$users",
+        has: "many",
+        label: "ratings",
       },
     },
   },

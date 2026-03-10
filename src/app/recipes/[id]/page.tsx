@@ -37,6 +37,7 @@ type Recipe = {
   favorites?: { id: string; user?: { id: string } | null }[];
   cooked?: { id: string; user?: { id: string } | null }[];
   shopping_list?: { id: string; user?: { id: string } | null }[];
+  ratings?: { id: string; stars: number; user?: { id: string } | null }[];
 };
 
 export default function RecipeDetailPage() {
@@ -61,6 +62,7 @@ export default function RecipeDetailPage() {
             favorites: { user: {} },
             cooked: { user: {} },
             shopping_list: { user: {} },
+            ratings: { user: {} },
           },
         }
       : null,
@@ -70,6 +72,7 @@ export default function RecipeDetailPage() {
   const notes: Note[] = recipe?.notes ?? [];
   const favorites = recipe?.favorites ?? [];
   const cooked = recipe?.cooked ?? [];
+  const ratings = recipe?.ratings ?? [];
   const favoriteCount = favorites.length;
   const cookedCount = cooked.length;
   const isFavorited =
@@ -83,6 +86,17 @@ export default function RecipeDetailPage() {
     ? shoppingList.find((s) => s.user && String(s.user.id) === String(user.id))?.id
     : null;
   const isOnShoppingList = !!myShoppingListItemId;
+
+  const averageStars =
+    ratings.length > 0
+      ? ratings.reduce((sum, r) => sum + (r.stars || 0), 0) / ratings.length
+      : 0;
+
+  const myStars = user
+    ? ratings.find(
+        (r) => r.user && String(r.user.id) === String(user.id),
+      )?.stars ?? 0
+    : 0;
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [title, setTitle] = React.useState("");
@@ -297,6 +311,31 @@ export default function RecipeDetailPage() {
     }
   };
 
+  const handleRate = async (stars: number) => {
+    if (!id || !user) return;
+    if (stars < 1 || stars > 5) return;
+    const existing = ratings.find(
+      (r) => r.user && String(r.user.id) === String(user.id),
+    );
+    try {
+      if (existing) {
+        await db.transact(db.tx.ratings[existing.id].update({ stars }));
+      } else {
+        const ratingId = instantId();
+        await db.transact(
+          db.tx.ratings[ratingId]
+            .create({ stars })
+            .link({
+              recipe: id as string,
+              user: user.id,
+            }),
+        );
+      }
+    } catch {
+      alert("Failed to save rating. Please try again.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -433,6 +472,64 @@ export default function RecipeDetailPage() {
                   {isOnShoppingList ? "Remove from list" : "Add to shopping list"}
                 </button>
               ) : null}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-brown-700">
+                Rating
+              </span>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const starValue = index + 1;
+                  const display =
+                    myStars > 0
+                      ? myStars
+                      : Math.round(averageStars || 0);
+                  const filled = starValue <= display;
+                  const clickable = !!user;
+                  return (
+                    <button
+                      key={starValue}
+                      type="button"
+                      onClick={
+                        clickable ? () => handleRate(starValue) : undefined
+                      }
+                      className={
+                        clickable
+                          ? "h-5 w-5 text-yellow-400 hover:scale-110 transition-transform"
+                          : "h-5 w-5 text-yellow-300"
+                      }
+                      aria-label={
+                        clickable
+                          ? `Rate ${starValue} star${starValue === 1 ? "" : "s"}`
+                          : undefined
+                      }
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill={filled ? "currentColor" : "none"}
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        className="h-5 w-5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M11.48 3.499a.75.75 0 0 1 1.04 0l2.262 2.26 3.185.463a.75.75 0 0 1 .416 1.279l-2.305 2.247.544 3.173a.75.75 0 0 1-1.088.791L12 13.977l-2.834 1.49a.75.75 0 0 1-1.088-.79l.544-3.174-2.305-2.247a.75.75 0 0 1 .416-1.279l3.185-.463 2.262-2.26Z"
+                        />
+                      </svg>
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-xs text-brown-500">
+                {ratings.length
+                  ? `${averageStars.toFixed(1)} · ${ratings.length} rating${
+                      ratings.length === 1 ? "" : "s"
+                    }`
+                  : "No ratings yet"}
+                {!user && " · Log in to rate"}
+              </span>
             </div>
 
             {recipe.imageUrl ? (
