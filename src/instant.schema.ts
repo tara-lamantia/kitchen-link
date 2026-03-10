@@ -10,6 +10,7 @@ const _schema = i.schema({
       vibe: i.string(),
       setup: i.string(),
       imageUrl: i.string().optional(),
+      imagePosition: i.string().optional(),
       ingredients: i.string(),
       ingredientsStructured: i.string().optional(),
       instructions: i.string(),

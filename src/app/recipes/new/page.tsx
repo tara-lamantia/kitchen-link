@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { compressImageForUpload } from "@/lib/compress-image";
-import { SETUPS, TAGS, VIBES } from "@/lib/constants";
+import { SETUPS, TAGS, VIBES, IMAGE_POSITION_OPTIONS, getImagePositionStyle } from "@/lib/constants";
 import { id } from "@instantdb/react";
 
 type IngredientRow = {
@@ -37,6 +37,7 @@ export default function NewRecipePage() {
   ]);
   const [instructions, setInstructions] = React.useState("");
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [imagePosition, setImagePosition] = React.useState<string>("center");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -142,6 +143,7 @@ export default function NewRecipePage() {
             vibe,
             setup,
             imageUrl: imageUrl ?? undefined,
+            imagePosition: imagePosition || undefined,
             ingredients: ingredientsText,
             ingredientsStructured: JSON.stringify(normalized),
             tags:
@@ -246,12 +248,37 @@ export default function NewRecipePage() {
             </button>
 
             {imagePreviewUrl ? (
-              <div className="h-14 w-14 overflow-hidden rounded-xl border border-brown-200 bg-white">
-                <img
-                  src={imagePreviewUrl}
-                  alt="Selected recipe preview"
-                  className="h-full w-full object-cover"
-                />
+              <div className="flex flex-col items-start gap-2">
+                <div className="aspect-[2/3] h-24 w-20 overflow-hidden rounded-xl border border-brown-200 bg-white sm:h-28 sm:w-24">
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Selected recipe preview"
+                    className="h-full w-full object-contain object-center"
+                    style={{ objectPosition: getImagePositionStyle(imagePosition) }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-brown-700">Preview focus</span>
+                  <div className="flex gap-1">
+                    {IMAGE_POSITION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setImagePosition(opt.value)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                          imagePosition === opt.value
+                            ? "border-sage-500 bg-sage-100 text-sage-700"
+                            : "border-brown-200 bg-white text-brown-600 hover:bg-brown-50"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-brown-500">
+                  Preview matches how it will look on the recipe.
+                </p>
               </div>
             ) : (
               <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-brown-200 bg-white text-xs text-brown-400">

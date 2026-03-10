@@ -13,6 +13,7 @@ type Favorite = {
     vibe: string;
     setup: string;
     imageUrl?: string | null;
+    imagePosition?: string | null;
     instructions: string;
     createdAt?: Date | string | null;
     author?: {
@@ -126,6 +127,7 @@ export default function FavoritesPage() {
               vibe={recipe.vibe}
               setup={recipe.setup}
               imageUrl={recipe.imageUrl}
+              imagePosition={recipe.imagePosition}
               instructions={recipe.instructions}
               createdAt={recipe.createdAt}
               canDelete={

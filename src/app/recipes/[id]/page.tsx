@@ -6,7 +6,7 @@ import { id as instantId } from "@instantdb/react";
 import { db } from "@/lib/db";
 import { compressImageForUpload } from "@/lib/compress-image";
 import { NotesList } from "@/components/NotesList";
-import { SETUPS, VIBES } from "@/lib/constants";
+import { SETUPS, VIBES, IMAGE_POSITION_OPTIONS, getImagePositionStyle } from "@/lib/constants";
 import { getRecipeImageSrc } from "@/lib/recipe-image";
 
 type RecipeAuthor = {
@@ -32,6 +32,7 @@ type Recipe = {
   vibe: string;
   setup: string;
   imageUrl?: string | null;
+  imagePosition?: string | null;
   ingredients: string;
   instructions: string;
   tags?: string | null;
@@ -136,6 +137,7 @@ export default function RecipeDetailPage() {
   const [isUploadingImage, setIsUploadingImage] = React.useState(false);
   const [ingredients, setIngredients] = React.useState("");
   const [instructions, setInstructions] = React.useState("");
+  const [imagePosition, setImagePosition] = React.useState<string>("center");
   const [editError, setEditError] = React.useState<string | null>(null);
   const [isSavingEdit, setIsSavingEdit] = React.useState(false);
 
@@ -154,6 +156,7 @@ export default function RecipeDetailPage() {
       setImageError(null);
       setIngredients(recipe.ingredients ?? "");
       setInstructions(recipe.instructions ?? "");
+      setImagePosition(recipe.imagePosition ?? "center");
     }
   }, [recipe, isEditing]);
 
@@ -241,6 +244,7 @@ export default function RecipeDetailPage() {
           vibe,
           setup,
           imageUrl,
+          imagePosition: imagePosition || undefined,
           ingredients: ingredients.trim(),
           instructions: instructions.trim(),
         }),
@@ -597,11 +601,12 @@ export default function RecipeDetailPage() {
             </div>
 
             {recipe.imageUrl ? (
-              <div className="mt-5 overflow-hidden rounded-2xl border border-brown-200 bg-cream-100/40">
+              <div className="mt-5 flex justify-center">
                 <img
                   src={getRecipeImageSrc(recipe.imageUrl)}
                   alt={`${recipe.title} photo`}
-                  className="h-64 w-full object-cover sm:h-80"
+                  className="max-h-[500px] w-auto max-w-full object-contain object-center"
+                  style={{ objectPosition: getImagePositionStyle(recipe.imagePosition) }}
                   loading="lazy"
                 />
               </div>
@@ -723,16 +728,41 @@ export default function RecipeDetailPage() {
                   </button>
 
                   {imagePreviewUrl || recipe.imageUrl ? (
-                    <div className="h-14 w-14 overflow-hidden rounded-xl border border-brown-200 bg-white">
-                      <img
-                        src={
-                          imagePreviewUrl
-                            ? imagePreviewUrl
-                            : getRecipeImageSrc(recipe.imageUrl ?? "")
-                        }
-                        alt="Recipe photo preview"
-                        className="h-full w-full object-cover"
-                      />
+                    <div className="flex flex-col items-start gap-2">
+                      <div className="aspect-[2/3] h-24 w-20 overflow-hidden rounded-xl border border-brown-200 bg-white sm:h-28 sm:w-24">
+                        <img
+                          src={
+                            imagePreviewUrl
+                              ? imagePreviewUrl
+                              : getRecipeImageSrc(recipe.imageUrl ?? "")
+                          }
+                          alt="Recipe photo preview"
+                          className="h-full w-full object-contain object-center"
+                          style={{ objectPosition: getImagePositionStyle(imagePosition) }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-medium text-brown-700">Preview focus</span>
+                        <div className="flex gap-1">
+                          {IMAGE_POSITION_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setImagePosition(opt.value)}
+                              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                imagePosition === opt.value
+                                  ? "border-sage-500 bg-sage-100 text-sage-700"
+                                  : "border-brown-200 bg-white text-brown-600 hover:bg-brown-50"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-brown-500">
+                        Preview matches how it will look on the recipe.
+                      </p>
                     </div>
                   ) : (
                     <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-brown-200 bg-white text-xs text-brown-400">

@@ -11,6 +11,7 @@ type Recipe = {
   vibe: string;
   setup: string;
   imageUrl?: string | null;
+  imagePosition?: string | null;
   author?: {
     id: string;
   } | null;
@@ -190,6 +191,7 @@ export default function SearchPage() {
             vibe={recipe.vibe}
             setup={recipe.setup}
             imageUrl={recipe.imageUrl}
+            imagePosition={recipe.imagePosition}
             instructions={recipe.instructions}
             createdAt={recipe.createdAt}
             canDelete={

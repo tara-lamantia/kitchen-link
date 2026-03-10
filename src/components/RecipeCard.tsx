@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getRecipeImageSrc } from "@/lib/recipe-image";
+import { getImagePositionStyle } from "@/lib/constants";
 
 type RecipeCardProps = {
   id: string;
@@ -7,6 +8,7 @@ type RecipeCardProps = {
   vibe: string;
   setup: string;
   imageUrl?: string | null;
+  imagePosition?: string | null;
   instructions: string;
   createdAt?: Date | string | null;
   canDelete?: boolean;
@@ -35,6 +37,7 @@ export function RecipeCard({
   vibe,
   setup,
   imageUrl,
+  imagePosition,
   instructions,
   createdAt,
   canDelete,
@@ -46,13 +49,16 @@ export function RecipeCard({
       className="group flex flex-col justify-between overflow-hidden rounded-xl border border-sand bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-sage-400 hover:shadow-md"
     >
       {imageUrl ? (
-        <div className="h-32 w-full bg-cream-100">
-          <img
-            src={getRecipeImageSrc(imageUrl)}
-            alt={`${title} photo`}
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
+        <div className="flex w-full justify-center bg-cream-100 py-1">
+          <div className="aspect-[2/3] w-28 overflow-hidden sm:w-32">
+            <img
+              src={getRecipeImageSrc(imageUrl)}
+              alt={`${title} photo`}
+              className="h-full w-full object-contain object-center"
+              style={{ objectPosition: getImagePositionStyle(imagePosition) }}
+              loading="lazy"
+            />
+          </div>
         </div>
       ) : null}
 
