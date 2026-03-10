@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getRecipeImageSrc } from "@/lib/recipe-image";
 
 type RecipeCardProps = {
   id: string;
@@ -47,7 +48,7 @@ export function RecipeCard({
       {imageUrl ? (
         <div className="h-32 w-full bg-cream-100">
           <img
-            src={imageUrl}
+            src={getRecipeImageSrc(imageUrl)}
             alt={`${title} photo`}
             className="h-full w-full object-cover"
             loading="lazy"

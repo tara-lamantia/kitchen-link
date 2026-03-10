@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { compressImageForUpload } from "@/lib/compress-image";
 import { NotesList } from "@/components/NotesList";
 import { SETUPS, VIBES } from "@/lib/constants";
+import { getRecipeImageSrc } from "@/lib/recipe-image";
 
 type RecipeAuthor = {
   id: string;
@@ -598,7 +599,7 @@ export default function RecipeDetailPage() {
             {recipe.imageUrl ? (
               <div className="mt-5 overflow-hidden rounded-2xl border border-brown-200 bg-cream-100/40">
                 <img
-                  src={recipe.imageUrl}
+                  src={getRecipeImageSrc(recipe.imageUrl)}
                   alt={`${recipe.title} photo`}
                   className="h-64 w-full object-cover sm:h-80"
                   loading="lazy"
@@ -724,7 +725,11 @@ export default function RecipeDetailPage() {
                   {imagePreviewUrl || recipe.imageUrl ? (
                     <div className="h-14 w-14 overflow-hidden rounded-xl border border-brown-200 bg-white">
                       <img
-                        src={imagePreviewUrl ?? recipe.imageUrl ?? ""}
+                        src={
+                          imagePreviewUrl
+                            ? imagePreviewUrl
+                            : getRecipeImageSrc(recipe.imageUrl ?? "")
+                        }
                         alt="Recipe photo preview"
                         className="h-full w-full object-cover"
                       />

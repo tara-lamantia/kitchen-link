@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const pathname = `recipes/${Date.now()}-${safeName}`;
 
     const blob = await put(pathname, file, {
-      access: "public",
+      access: "private",
       addRandomSuffix: true,
     });
 
