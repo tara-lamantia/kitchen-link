@@ -6,6 +6,12 @@ import { db } from "@/lib/db";
 import { SETUPS, VIBES } from "@/lib/constants";
 import { id } from "@instantdb/react";
 
+type IngredientRow = {
+  quantity: string;
+  unit: string;
+  name: string;
+};
+
 export default function NewRecipePage() {
   const router = useRouter();
   const { user, isLoading } = db.useAuth();
@@ -25,7 +31,9 @@ export default function NewRecipePage() {
   );
   const [imageError, setImageError] = React.useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = React.useState(false);
-  const [ingredients, setIngredients] = React.useState("");
+  const [ingredientsList, setIngredientsList] = React.useState<IngredientRow[]>([
+    { quantity: "", unit: "", name: "" },
+  ]);
   const [instructions, setInstructions] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -42,10 +50,34 @@ export default function NewRecipePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !ingredients.trim() || !instructions.trim()) {
+    if (!title.trim() || !instructions.trim()) {
       setError("Please fill in all required fields.");
       return;
     }
+
+    const normalized = ingredientsList
+      .map((row) => {
+        const quantityRaw = row.quantity.trim();
+        const unit = row.unit.trim();
+        const name = row.name.trim();
+        if (!quantityRaw && !unit && !name) return null;
+        const parsed = quantityRaw ? parseFloat(quantityRaw) : 1;
+        const quantity =
+          Number.isNaN(parsed) || parsed <= 0 ? 1 : parsed;
+        return { quantity, unit, name };
+      })
+      .filter((x): x is { quantity: number; unit: string; name: string } => !!x);
+
+    if (!normalized.length) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    const ingredientsText = normalized
+      .map((item) =>
+        `${item.quantity} ${item.unit} ${item.name}`.trim(),
+      )
+      .join("\n");
 
     setIsSubmitting(true);
     setError(null);
@@ -79,7 +111,8 @@ export default function NewRecipePage() {
             vibe,
             setup,
             imageUrl: imageUrl ?? undefined,
-            ingredients: ingredients.trim(),
+            ingredients: ingredientsText,
+            ingredientsStructured: JSON.stringify(normalized),
             instructions: instructions.trim(),
             createdAt: new Date(),
           })
@@ -257,27 +290,95 @@ export default function NewRecipePage() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label
-            htmlFor="ingredients"
-            className="block text-sm font-medium text-brown-700"
-          >
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-brown-700">
             Ingredients
           </label>
-          <textarea
-            id="ingredients"
-            required
-            rows={5}
-            value={ingredients}
-            onChange={(e) => setIngredients(e.target.value)}
-            className="block w-full resize-y rounded-lg border border-sand px-3 py-2 text-sm shadow-sm outline-none placeholder:text-brown-500 focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
-            placeholder="- 1 cup rice
-- 2 eggs
-- 1 handful frozen peas"
-          />
           <p className="text-xs text-brown-500">
-            Use one item per line so it&apos;s easy to scan on a phone.
+            Use separate rows for each ingredient so scaling works later.
           </p>
+          <div className="space-y-2">
+            {ingredientsList.map((row, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,3fr)_auto] items-center gap-2"
+              >
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.25"
+                  value={row.quantity}
+                  onChange={(e) => {
+                    const next = [...ingredientsList];
+                    next[index] = {
+                      ...next[index],
+                      quantity: e.target.value,
+                    };
+                    setIngredientsList(next);
+                  }}
+                  className="w-full rounded-lg border border-sand px-2 py-1 text-sm shadow-sm outline-none focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+                  placeholder="1"
+                  aria-label="Quantity"
+                />
+                <input
+                  type="text"
+                  value={row.unit}
+                  onChange={(e) => {
+                    const next = [...ingredientsList];
+                    next[index] = {
+                      ...next[index],
+                      unit: e.target.value,
+                    };
+                    setIngredientsList(next);
+                  }}
+                  className="w-full rounded-lg border border-sand px-2 py-1 text-sm shadow-sm outline-none focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+                  placeholder="cup, tsp…"
+                  aria-label="Unit"
+                />
+                <input
+                  type="text"
+                  value={row.name}
+                  onChange={(e) => {
+                    const next = [...ingredientsList];
+                    next[index] = {
+                      ...next[index],
+                      name: e.target.value,
+                    };
+                    setIngredientsList(next);
+                  }}
+                  className="w-full rounded-lg border border-sand px-2 py-1 text-sm shadow-sm outline-none focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+                  placeholder="ingredient name"
+                  aria-label="Ingredient name"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (ingredientsList.length === 1) return;
+                    setIngredientsList((prev) =>
+                      prev.filter((_, i) => i !== index),
+                    );
+                  }}
+                  className="ml-1 rounded-full border border-brown-200 px-2 py-1 text-xs text-brown-500 hover:bg-brown-50"
+                  aria-label="Remove ingredient"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setIngredientsList((prev) => [
+                ...prev,
+                { quantity: "", unit: "", name: "" },
+              ])
+            }
+            className="mt-1 rounded-full border border-sage-400 bg-white px-3 py-1.5 text-xs font-medium text-sage-700 hover:bg-sage-50"
+          >
+            Add ingredient
+          </button>
         </div>
 
         <div className="space-y-1">

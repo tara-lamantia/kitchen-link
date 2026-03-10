@@ -11,6 +11,7 @@ const _schema = i.schema({
       setup: i.string(),
       imageUrl: i.string().optional(),
       ingredients: i.string(),
+      ingredientsStructured: i.string().optional(),
       instructions: i.string(),
       createdAt: i.date(),
     }),
