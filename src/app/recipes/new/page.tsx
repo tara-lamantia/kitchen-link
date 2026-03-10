@@ -87,42 +87,13 @@ export default function NewRecipePage() {
     const recipeId = id();
 
     try {
-      let imageUrl: string | null = null;
+      // Temporarily disable image uploads: always save without a photo
       if (imageFile) {
-        setIsUploadingImage(true);
-        const formData = new FormData();
-        formData.append("file", imageFile);
-
-        try {
-          const res = await fetch("/api/recipe-image", {
-            method: "POST",
-            body: formData,
-          });
-
-          let json: { url?: string; error?: string } | null = null;
-          try {
-            json = (await res.json()) as { url?: string; error?: string };
-          } catch {
-            json = null;
-          }
-
-          if (!res.ok || !json?.url) {
-            throw new Error(
-              json?.error ||
-                "We couldn't upload this photo. Your recipe will still save without it.",
-            );
-          }
-          imageUrl = json.url;
-        } catch (uploadErr: unknown) {
-          const message =
-            (uploadErr as { message?: string })?.message ||
-            "We couldn't upload this photo. Your recipe will still save without it.";
-          setImageError(message);
-          // Continue without blocking recipe save
-        } finally {
-          setIsUploadingImage(false);
-        }
+        setImageError(
+          "Photo uploads are temporarily turned off. Your recipe will save without a photo.",
+        );
       }
+      const imageUrl: string | null = null;
 
       await db.transact(
         db.tx.recipes[recipeId]
