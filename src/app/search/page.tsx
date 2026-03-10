@@ -3,7 +3,7 @@
 import * as React from "react";
 import { db } from "@/lib/db";
 import { RecipeCard } from "@/components/RecipeCard";
-import { SETUPS, VIBES } from "@/lib/constants";
+import { SETUPS, TAGS, VIBES } from "@/lib/constants";
 
 type Recipe = {
   id: string;
@@ -14,6 +14,7 @@ type Recipe = {
   author?: {
     id: string;
   } | null;
+  tags?: string | null;
   instructions: string;
   createdAt?: Date | string | null;
 };
@@ -35,10 +36,26 @@ export default function SearchPage() {
 
   const [vibe, setVibe] = React.useState<string>("");
   const [setup, setSetup] = React.useState<string>("");
+  const [tag, setTag] = React.useState<string>("");
 
   const filtered = recipes.filter((recipe) => {
     if (vibe && recipe.vibe !== vibe) return false;
     if (setup && recipe.setup !== setup) return false;
+    if (tag) {
+      if (!recipe.tags) return false;
+      let parsed: string[] = [];
+      try {
+        const t = JSON.parse(recipe.tags);
+        if (Array.isArray(t)) {
+          parsed = t
+            .map((v) => (typeof v === "string" ? v : ""))
+            .filter(Boolean);
+        }
+      } catch {
+        parsed = [];
+      }
+      if (!parsed.includes(tag)) return false;
+    }
     return true;
   });
 
@@ -99,12 +116,35 @@ export default function SearchPage() {
           </select>
         </div>
 
-        {(vibe || setup) && (
+        <div className="flex flex-col gap-1 text-sm">
+          <label
+            htmlFor="tag"
+            className="text-xs font-medium uppercase tracking-wide text-brown-700"
+          >
+            Tag
+          </label>
+          <select
+            id="tag"
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            className="min-w-[12rem] rounded-lg border border-sand px-3 py-2 text-sm shadow-sm outline-none focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+          >
+            <option value="">Any</option>
+            {TAGS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(vibe || setup || tag) && (
           <button
             type="button"
             onClick={() => {
               setVibe("");
               setSetup("");
+              setTag("");
             }}
             className="self-end rounded-full border border-sand px-3 py-1 text-xs font-medium text-brown-600 hover:bg-cream-100"
           >

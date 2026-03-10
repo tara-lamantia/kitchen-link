@@ -9,6 +9,16 @@ export const VIBES = [
 
 export type Vibe = (typeof VIBES)[number];
 
+export const TAGS = [
+  "Breakfast",
+  "Dinner",
+  "Vegetarian",
+  "Vegan",
+  "Healthy",
+] as const;
+
+export type Tag = (typeof TAGS)[number];
+
 export const SETUPS = [
   "One-Pot / Slow Cooker",
   "Air Fryer",

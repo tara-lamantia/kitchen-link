@@ -13,6 +13,7 @@ const _schema = i.schema({
       ingredients: i.string(),
       ingredientsStructured: i.string().optional(),
       instructions: i.string(),
+      tags: i.string().optional(),
       createdAt: i.date(),
     }),
     notes: i.entity({

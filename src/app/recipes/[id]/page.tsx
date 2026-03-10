@@ -32,6 +32,7 @@ type Recipe = {
   imageUrl?: string | null;
   ingredients: string;
   instructions: string;
+  tags?: string | null;
   author?: RecipeAuthor | null;
   notes?: Note[];
   favorites?: { id: string; user?: { id: string } | null }[];
@@ -311,6 +312,20 @@ export default function RecipeDetailPage() {
     }
   };
 
+  let parsedTags: string[] = [];
+  if (recipe?.tags) {
+    try {
+      const t = JSON.parse(recipe.tags);
+      if (Array.isArray(t)) {
+        parsedTags = t
+          .map((v) => (typeof v === "string" ? v : ""))
+          .filter(Boolean);
+      }
+    } catch {
+      parsedTags = [];
+    }
+  }
+
   const handleRate = async (stars: number) => {
     if (!id || !user) return;
     if (stars < 1 || stars > 5) return;
@@ -387,6 +402,14 @@ export default function RecipeDetailPage() {
                   <span className="rounded-full bg-brown-100 px-2.5 py-1 text-brown-700">
                     {recipe.setup}
                   </span>
+                  {parsedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-cream-100 px-2.5 py-1 text-brown-700"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                   {recipe.author?.email && (
                     <span className="text-brown-500">
                       by{" "}

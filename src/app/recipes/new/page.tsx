@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
-import { SETUPS, VIBES } from "@/lib/constants";
+import { SETUPS, TAGS, VIBES } from "@/lib/constants";
 import { id } from "@instantdb/react";
 
 type IngredientRow = {
@@ -35,6 +35,7 @@ export default function NewRecipePage() {
     { quantity: "", unit: "", name: "" },
   ]);
   const [instructions, setInstructions] = React.useState("");
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -113,6 +114,10 @@ export default function NewRecipePage() {
             imageUrl: imageUrl ?? undefined,
             ingredients: ingredientsText,
             ingredientsStructured: JSON.stringify(normalized),
+            tags:
+              selectedTags.length > 0
+                ? JSON.stringify(selectedTags)
+                : undefined,
             instructions: instructions.trim(),
             createdAt: new Date(),
           })
@@ -287,6 +292,41 @@ export default function NewRecipePage() {
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <span className="block text-sm font-medium text-brown-700">
+            Tags (optional)
+          </span>
+          <p className="text-xs text-brown-500">
+            Add quick filters like breakfast, dinner, or diet style.
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {TAGS.map((tag) => {
+              const isActive = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() =>
+                    setSelectedTags((prev) =>
+                      prev.includes(tag)
+                        ? prev.filter((t) => t !== tag)
+                        : [...prev, tag],
+                    )
+                  }
+                  className={[
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    isActive
+                      ? "border-sage-500 bg-sage-100 text-sage-700"
+                      : "border-sand bg-white text-brown-700 hover:border-sage-400 hover:text-sage-700",
+                  ].join(" ")}
+                >
+                  {tag}
+                </button>
+              );
+            })}
           </div>
         </div>
 
