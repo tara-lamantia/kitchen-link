@@ -87,13 +87,51 @@ export default function NewRecipePage() {
     const recipeId = id();
 
     try {
-      // Temporarily disable image uploads: always save without a photo
+      let imageUrl: string | null = null;
       if (imageFile) {
-        setImageError(
-          "Photo uploads are temporarily turned off. Your recipe will save without a photo.",
-        );
+        setIsUploadingImage(true);
+        const formData = new FormData();
+        formData.append("file", imageFile);
+        try {
+          const res = await fetch("/api/recipe-image", {
+            method: "POST",
+            body: formData,
+          });
+          const text = await res.text();
+          let json: { url?: string; error?: string } | null = null;
+          if (text) {
+            try {
+              json = JSON.parse(text) as { url?: string; error?: string };
+            } catch {
+              json = null;
+            }
+          }
+          if (!res.ok || !json?.url) {
+            const errMsg =
+              json?.error ||
+              (text && text.length < 200 ? text : `Upload failed (${res.status})`);
+            setImageError(errMsg);
+            if (typeof window !== "undefined") {
+              window.alert(
+                "Photo upload failed. Copy this and paste it in the chat:\n\n" + errMsg,
+              );
+            }
+          } else {
+            imageUrl = json.url;
+          }
+        } catch (uploadErr: unknown) {
+          const msg =
+            (uploadErr as { message?: string })?.message || String(uploadErr);
+          setImageError(msg);
+          if (typeof window !== "undefined") {
+            window.alert(
+              "Photo upload error. Copy this and paste it in the chat:\n\n" + msg,
+            );
+          }
+        } finally {
+          setIsUploadingImage(false);
+        }
       }
-      const imageUrl: string | null = null;
 
       await db.transact(
         db.tx.recipes[recipeId]
