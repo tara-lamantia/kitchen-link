@@ -8,6 +8,8 @@ type RecipeCardProps = {
   imageUrl?: string | null;
   instructions: string;
   createdAt?: Date | string | null;
+  canDelete?: boolean;
+  onDelete?: () => void;
 };
 
 function formatDate(value: RecipeCardProps["createdAt"]) {
@@ -34,6 +36,8 @@ export function RecipeCard({
   imageUrl,
   instructions,
   createdAt,
+  canDelete,
+  onDelete,
 }: RecipeCardProps) {
   return (
     <Link
@@ -56,7 +60,7 @@ export function RecipeCard({
           <h3 className="text-base font-semibold text-brown-900 group-hover:text-sage-700">
             {title}
           </h3>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium">
             <span className="rounded-full bg-sage-100 px-2 py-0.5 text-sage-700">
               {vibe}
             </span>
@@ -65,11 +69,44 @@ export function RecipeCard({
             </span>
           </div>
         </div>
-        {createdAt && (
-          <span className="shrink-0 text-xs text-brown-500">
-            {formatDate(createdAt)}
-          </span>
-        )}
+        <div className="flex items-start gap-2">
+          {createdAt && (
+            <span className="shrink-0 text-xs text-brown-500">
+              {formatDate(createdAt)}
+            </span>
+          )}
+          {canDelete && onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                const confirmed = window.confirm(
+                  "Delete this recipe? This will also remove its Kitchen Notes, favorites, and shopping list entries.",
+                );
+                if (!confirmed) return;
+                onDelete();
+              }}
+              className="shrink-0 rounded-full p-1 text-brown-400 hover:bg-red-50 hover:text-red-600"
+              title="Delete recipe"
+              aria-label="Delete recipe"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 4h6m-7 4h8m-7 0v8m6-8v8M5 8h14l-1 11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 8Zm3-4h8a2 2 0 0 1 2 2v0H6v0a2 2 0 0 1 2-2Z"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="px-4 pb-3 line-clamp-3 text-sm text-brown-600">

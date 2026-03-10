@@ -11,11 +11,15 @@ type Recipe = {
   vibe: string;
   setup: string;
   imageUrl?: string | null;
+  author?: {
+    id: string;
+  } | null;
   instructions: string;
   createdAt?: Date | string | null;
 };
 
 export default function SearchPage() {
+  const { user } = db.useAuth();
   const {
     data,
     isLoading,
@@ -136,6 +140,17 @@ export default function SearchPage() {
             imageUrl={recipe.imageUrl}
             instructions={recipe.instructions}
             createdAt={recipe.createdAt}
+            canDelete={
+              !!user &&
+              (!!recipe.author && recipe.author.id === user.id ||
+                user.email === "tarajadelamantia@icloud.com")
+            }
+            onDelete={() => {
+              if (!user) return;
+              db.transact(db.tx.recipes[recipe.id].delete()).catch(() => {
+                alert("Failed to delete recipe. Please try again.");
+              });
+            }}
           />
         ))}
       </div>

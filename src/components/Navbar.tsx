@@ -37,6 +37,14 @@ export function Navbar() {
           </Link>
           {user && (
             <Link
+              href="/favorites"
+              className={navLinkClasses("/favorites")}
+            >
+              Favorites
+            </Link>
+          )}
+          {user && (
+            <Link
               href="/shopping-list"
               className={navLinkClasses("/shopping-list")}
             >

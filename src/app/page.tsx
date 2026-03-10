@@ -12,6 +12,9 @@ type Recipe = {
   vibe: string;
   setup: string;
   imageUrl?: string | null;
+  author?: {
+    id: string;
+  } | null;
   ingredients?: string;
   instructions: string;
   createdAt?: Date | string | null;
@@ -151,6 +154,17 @@ export default function Home() {
               imageUrl={recipe.imageUrl}
               instructions={recipe.instructions}
               createdAt={recipe.createdAt}
+              canDelete={
+                !!user &&
+                (!!recipe.author && recipe.author.id === user.id ||
+                  user.email === "tarajadelamantia@icloud.com")
+              }
+              onDelete={() => {
+                if (!user) return;
+                db.transact(db.tx.recipes[recipe.id].delete()).catch(() => {
+                  alert("Failed to delete recipe. Please try again.");
+                });
+              }}
             />
           ))}
         </div>
@@ -179,6 +193,17 @@ export default function Home() {
                 imageUrl={recipe.imageUrl}
                 instructions={recipe.instructions}
                 createdAt={recipe.createdAt}
+                canDelete={
+                  !!user &&
+                  (recipe as Recipe).author?.id === user.id ||
+                  user?.email === "tarajadelamantia@icloud.com"
+                }
+                onDelete={() => {
+                  if (!user) return;
+                  db.transact(db.tx.recipes[recipe.id].delete()).catch(() => {
+                    alert("Failed to delete recipe. Please try again.");
+                  });
+                }}
               />
             ))}
           </div>
