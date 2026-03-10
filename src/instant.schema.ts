@@ -9,6 +9,7 @@ const _schema = i.schema({
       title: i.string(),
       vibe: i.string(),
       setup: i.string(),
+      imageUrl: i.string().optional(),
       ingredients: i.string(),
       instructions: i.string(),
       createdAt: i.date(),

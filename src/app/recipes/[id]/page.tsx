@@ -29,6 +29,7 @@ type Recipe = {
   title: string;
   vibe: string;
   setup: string;
+  imageUrl?: string | null;
   ingredients: string;
   instructions: string;
   author?: RecipeAuthor | null;
@@ -87,6 +88,12 @@ export default function RecipeDetailPage() {
   const [title, setTitle] = React.useState("");
   const [vibe, setVibe] = React.useState<string>(VIBES[0]);
   const [setup, setSetup] = React.useState<string>(SETUPS[0]);
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = React.useState<string | null>(
+    null,
+  );
+  const [imageError, setImageError] = React.useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = React.useState(false);
   const [ingredients, setIngredients] = React.useState("");
   const [instructions, setInstructions] = React.useState("");
   const [editError, setEditError] = React.useState<string | null>(null);
@@ -101,6 +108,10 @@ export default function RecipeDetailPage() {
       setTitle(recipe.title ?? "");
       setVibe(recipe.vibe ?? VIBES[0]);
       setSetup(recipe.setup ?? SETUPS[0]);
+      setImageFile(null);
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+      setImagePreviewUrl(null);
+      setImageError(null);
       setIngredients(recipe.ingredients ?? "");
       setInstructions(recipe.instructions ?? "");
     }
@@ -135,12 +146,32 @@ export default function RecipeDetailPage() {
 
     setIsSavingEdit(true);
     setEditError(null);
+    setImageError(null);
     try {
+      let imageUrl: string | null | undefined = recipe?.imageUrl ?? undefined;
+      if (imageFile) {
+        setIsUploadingImage(true);
+        const formData = new FormData();
+        formData.append("file", imageFile);
+
+        const res = await fetch("/api/recipe-image", {
+          method: "POST",
+          body: formData,
+        });
+
+        const json = (await res.json()) as { url?: string; error?: string };
+        if (!res.ok || !json.url) {
+          throw new Error(json.error || "Failed to upload image.");
+        }
+        imageUrl = json.url;
+      }
+
       await db.transact(
         db.tx.recipes[id as string].update({
           title: title.trim(),
           vibe,
           setup,
+          imageUrl,
           ingredients: ingredients.trim(),
           instructions: instructions.trim(),
         }),
@@ -149,10 +180,16 @@ export default function RecipeDetailPage() {
     } catch (err: unknown) {
       const message =
         (err as { body?: { message?: string } })?.body?.message ??
+        (err as { message?: string })?.message ??
         "Failed to update recipe. Please try again.";
-      setEditError(message);
+      if (message.toLowerCase().includes("upload")) {
+        setImageError(message);
+      } else {
+        setEditError(message);
+      }
     } finally {
       setIsSavingEdit(false);
+      setIsUploadingImage(false);
     }
   };
 
@@ -398,6 +435,17 @@ export default function RecipeDetailPage() {
               ) : null}
             </div>
 
+            {recipe.imageUrl ? (
+              <div className="mt-5 overflow-hidden rounded-2xl border border-brown-200 bg-cream-100/40">
+                <img
+                  src={recipe.imageUrl}
+                  alt={`${recipe.title} photo`}
+                  className="h-64 w-full object-cover sm:h-80"
+                  loading="lazy"
+                />
+              </div>
+            ) : null}
+
             <div className="mt-6 grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-brown-700">
@@ -444,6 +492,92 @@ export default function RecipeDetailPage() {
           </>
         ) : (
           <form onSubmit={handleEditSubmit} className="space-y-5">
+            <div className="rounded-2xl border border-brown-200 bg-cream-100/60 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-brown-700">
+                    Photo
+                  </h2>
+                  <p className="text-xs text-brown-600">
+                    Upload a new image to replace the current one.
+                  </p>
+                  {imageError && (
+                    <p className="text-xs text-red-600">{imageError}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    id="recipe-image"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setImageError(null);
+                      if (!file) {
+                        setImageFile(null);
+                        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                        setImagePreviewUrl(null);
+                        return;
+                      }
+                      if (!file.type.startsWith("image/")) {
+                        setImageError("Please choose an image file.");
+                        e.target.value = "";
+                        return;
+                      }
+                      setImageFile(file);
+                      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                      setImagePreviewUrl(URL.createObjectURL(file));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      document.getElementById("recipe-image")?.click()
+                    }
+                    className="inline-flex items-center justify-center rounded-full border border-brown-200 bg-white px-3 py-2 text-sm font-medium text-brown-700 shadow-sm transition hover:bg-brown-50"
+                    title="Upload a photo"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6.827 6.175A2 2 0 0 1 8.64 5h6.72a2 2 0 0 1 1.813 1.175L18 8h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1l.827-1.825Z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 13a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                      />
+                    </svg>
+                    <span className="ml-2">Choose photo</span>
+                  </button>
+
+                  {imagePreviewUrl || recipe.imageUrl ? (
+                    <div className="h-14 w-14 overflow-hidden rounded-xl border border-brown-200 bg-white">
+                      <img
+                        src={imagePreviewUrl ?? recipe.imageUrl ?? ""}
+                        alt="Recipe photo preview"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-brown-200 bg-white text-xs text-brown-400">
+                      Preview
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between gap-3">
               <h1 className="text-xl font-semibold text-brown-900">
                 Edit recipe
@@ -570,10 +704,10 @@ export default function RecipeDetailPage() {
               </button>
               <button
                 type="submit"
-                disabled={isSavingEdit}
+                disabled={isSavingEdit || isUploadingImage}
                 className="rounded-full bg-sage-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sage-700 disabled:cursor-not-allowed disabled:bg-sage-400"
               >
-                {isSavingEdit ? "Saving…" : "Save changes"}
+                {isSavingEdit || isUploadingImage ? "Saving…" : "Save changes"}
               </button>
             </div>
           </form>

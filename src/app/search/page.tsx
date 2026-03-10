@@ -10,6 +10,7 @@ type Recipe = {
   title: string;
   vibe: string;
   setup: string;
+  imageUrl?: string | null;
   instructions: string;
   createdAt?: Date | string | null;
 };
@@ -132,6 +133,7 @@ export default function SearchPage() {
             title={recipe.title}
             vibe={recipe.vibe}
             setup={recipe.setup}
+            imageUrl={recipe.imageUrl}
             instructions={recipe.instructions}
             createdAt={recipe.createdAt}
           />

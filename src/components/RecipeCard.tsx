@@ -5,6 +5,7 @@ type RecipeCardProps = {
   title: string;
   vibe: string;
   setup: string;
+  imageUrl?: string | null;
   instructions: string;
   createdAt?: Date | string | null;
 };
@@ -30,15 +31,27 @@ export function RecipeCard({
   title,
   vibe,
   setup,
+  imageUrl,
   instructions,
   createdAt,
 }: RecipeCardProps) {
   return (
     <Link
       href={`/recipes/${id}`}
-      className="group flex flex-col justify-between rounded-xl border border-sand bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-sage-400 hover:shadow-md"
+      className="group flex flex-col justify-between overflow-hidden rounded-xl border border-sand bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-sage-400 hover:shadow-md"
     >
-      <div className="flex items-start justify-between gap-3">
+      {imageUrl ? (
+        <div className="h-32 w-full bg-cream-100">
+          <img
+            src={imageUrl}
+            alt={`${title} photo`}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      ) : null}
+
+      <div className="flex items-start justify-between gap-3 p-4">
         <div>
           <h3 className="text-base font-semibold text-brown-900 group-hover:text-sage-700">
             {title}
@@ -59,10 +72,10 @@ export function RecipeCard({
         )}
       </div>
 
-      <p className="mt-3 line-clamp-3 text-sm text-brown-600">
+      <p className="px-4 pb-3 line-clamp-3 text-sm text-brown-600">
         {truncate(instructions)}
       </p>
-      <span className="mt-3 inline-flex text-xs font-medium text-sage-700">
+      <span className="px-4 pb-4 inline-flex text-xs font-medium text-sage-700">
         Open recipe →
       </span>
     </Link>

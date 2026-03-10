@@ -5,24 +5,26 @@ const rules = {
     allow: {
       view: "true",
       create: "isAuthed",
-      update: "isOwner",
-      delete: "isOwner",
+      update: "isOwner || isAdmin",
+      delete: "isOwner || isAdmin",
     },
     bind: {
       isAuthed: "auth.id != null",
       isOwner: "auth.id != null && auth.id in data.ref('author.id')",
+      isAdmin: "auth.email == 'tarajadelamantia@icloud.com'",
     },
   },
   notes: {
     allow: {
       view: "true",
       create: "isAuthed",
-      update: "isOwner",
-      delete: "isOwner",
+      update: "isOwner || isAdmin",
+      delete: "isOwner || isAdmin",
     },
     bind: {
       isAuthed: "auth.id != null",
       isOwner: "auth.id != null && auth.id in data.ref('author.id')",
+      isAdmin: "auth.email == 'tarajadelamantia@icloud.com'",
     },
   },
   favorites: {
