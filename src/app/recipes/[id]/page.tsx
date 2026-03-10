@@ -102,7 +102,6 @@ export default function RecipeDetailPage() {
   const [noteText, setNoteText] = React.useState("");
   const [noteError, setNoteError] = React.useState<string | null>(null);
   const [isSavingNote, setIsSavingNote] = React.useState(false);
-  const [scaleMultiplier, setScaleMultiplier] = React.useState(1);
 
   React.useEffect(() => {
     if (recipe && !isEditing) {
@@ -323,45 +322,14 @@ export default function RecipeDetailPage() {
   }
 
   const ingredientsLines =
-    typeof recipe?.ingredients === "string"
+    typeof recipe.ingredients === "string"
       ? recipe.ingredients.split(/\r?\n/).filter(Boolean)
       : [];
 
   const instructionsLines =
-    typeof recipe?.instructions === "string"
+    typeof recipe.instructions === "string"
       ? recipe.instructions.split(/\r?\n/).filter(Boolean)
       : [];
-
-  const scaledIngredientsLines = React.useMemo(() => {
-    if (!ingredientsLines.length || scaleMultiplier === 1) {
-      return ingredientsLines;
-    }
-    const numberPattern = /^(\d+(?:\.\d+)?|\d+\/\d+)\b/;
-    return ingredientsLines.map((line) => {
-      const match = line.match(numberPattern);
-      if (!match) return line;
-      const raw = match[1];
-      let value: number | null = null;
-      if (raw.includes("/")) {
-        const [a, b] = raw.split("/");
-        const num = parseFloat(a);
-        const den = parseFloat(b);
-        if (!Number.isNaN(num) && !Number.isNaN(den) && den !== 0) {
-          value = num / den;
-        }
-      } else {
-        const num = parseFloat(raw);
-        if (!Number.isNaN(num)) value = num;
-      }
-      if (value == null) return line;
-      const scaled = value * scaleMultiplier;
-      const formatted =
-        scaled % 1 === 0
-          ? String(scaled)
-          : scaled.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
-      return line.replace(numberPattern, formatted);
-    });
-  }, [ingredientsLines, scaleMultiplier]);
 
   return (
     <div className="space-y-8">
@@ -467,41 +435,6 @@ export default function RecipeDetailPage() {
               ) : null}
             </div>
 
-            <div className="mt-4 inline-flex items-center gap-3 rounded-full border border-brown-100 bg-cream-50 px-3 py-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-brown-700">
-                Servings
-              </span>
-              <div className="inline-flex items-center gap-2 rounded-full border border-brown-200 bg-white px-2 py-1">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setScaleMultiplier((prev) =>
-                      prev <= 0.5 ? 0.5 : Number((prev - 0.5).toFixed(2)),
-                    )
-                  }
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold text-brown-700 hover:bg-cream-100"
-                  aria-label="Decrease servings"
-                >
-                  -
-                </button>
-                <span className="min-w-[3rem] text-center text-sm text-brown-800">
-                  × {scaleMultiplier.toFixed(1).replace(/\.0$/, "")}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setScaleMultiplier((prev) =>
-                      prev >= 4 ? 4 : Number((prev + 0.5).toFixed(2)),
-                    )
-                  }
-                  className="flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold text-brown-700 hover:bg-cream-100"
-                  aria-label="Increase servings"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
             {recipe.imageUrl ? (
               <div className="mt-5 overflow-hidden rounded-2xl border border-brown-200 bg-cream-100/40">
                 <img
@@ -518,9 +451,9 @@ export default function RecipeDetailPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-brown-700">
                   Ingredients
                 </h2>
-                {scaledIngredientsLines.length ? (
+                {ingredientsLines.length ? (
                   <ul className="space-y-1 text-sm text-brown-800">
-                    {scaledIngredientsLines.map((line: string, index: number) => (
+                    {ingredientsLines.map((line: string, index: number) => (
                       <li key={`${line}-${index}`} className="flex gap-2">
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-brown-400" />
                         <span>{line}</span>
