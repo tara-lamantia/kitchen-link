@@ -783,7 +783,12 @@ export default function RecipeDetailPage() {
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 className="block w-full resize-y rounded-lg border border-brown-300 px-3 py-2 text-sm shadow-sm outline-none ring-sage-100 placeholder:text-brown-400 focus:border-sage-500 focus:ring-2 focus:ring-sage-200"
+                placeholder="Each line is a step. Numbers are added for you."
               />
+              <p className="text-xs text-brown-500">
+                Put one step per line and skip typing 1., 2., 3.—we&apos;ll add
+                the step numbers on the recipe page.
+              </p>
             </div>
 
             {editError && <p className="text-xs text-red-600">{editError}</p>}
