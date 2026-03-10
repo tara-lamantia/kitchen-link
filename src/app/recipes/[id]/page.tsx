@@ -102,6 +102,11 @@ export default function RecipeDetailPage() {
   const [noteText, setNoteText] = React.useState("");
   const [noteError, setNoteError] = React.useState<string | null>(null);
   const [isSavingNote, setIsSavingNote] = React.useState(false);
+  const [scaleMultiplier, setScaleMultiplier] = React.useState(1);
+  const [isCookModeDialogOpen, setIsCookModeDialogOpen] =
+    React.useState(false);
+  const [isCookModeActive, setIsCookModeActive] = React.useState(false);
+  const wakeLockRef = React.useRef<any | null>(null);
 
   React.useEffect(() => {
     if (recipe && !isEditing) {
@@ -297,6 +302,83 @@ export default function RecipeDetailPage() {
     }
   };
 
+  const requestWakeLock = async () => {
+    try {
+      const nav = navigator as any;
+      if (!nav.wakeLock || !nav.wakeLock.request) return;
+      wakeLockRef.current = await nav.wakeLock.request("screen");
+    } catch {
+      // ignore if wake lock is not available
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    try {
+      if (wakeLockRef.current && wakeLockRef.current.release) {
+        await wakeLockRef.current.release();
+      }
+    } catch {
+      // ignore release errors
+    } finally {
+      wakeLockRef.current = null;
+    }
+  };
+
+  const exitFullscreenIfNeeded = async () => {
+    if (typeof document !== "undefined" && document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const startCookMode = async () => {
+    setIsCookModeDialogOpen(false);
+    try {
+      if (typeof document !== "undefined") {
+        await document.documentElement.requestFullscreen?.();
+      }
+    } catch {
+      // ignore fullscreen errors
+    }
+    await requestWakeLock();
+    setIsCookModeActive(true);
+  };
+
+  const stopCookMode = async () => {
+    setIsCookModeActive(false);
+    await releaseWakeLock();
+    await exitFullscreenIfNeeded();
+  };
+
+  React.useEffect(() => {
+    const handleChange = () => {
+      if (!document.fullscreenElement && isCookModeActive) {
+        // user pressed ESC or otherwise left fullscreen
+        stopCookMode();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("fullscreenchange", handleChange);
+    }
+    return () => {
+      if (typeof document !== "undefined") {
+        document.removeEventListener("fullscreenchange", handleChange);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCookModeActive]);
+
+  React.useEffect(() => {
+    return () => {
+      // cleanup on unmount
+      stopCookMode();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -330,6 +412,35 @@ export default function RecipeDetailPage() {
     typeof recipe.instructions === "string"
       ? recipe.instructions.split(/\r?\n/).filter(Boolean)
       : [];
+
+  const scaledIngredientsLines = React.useMemo(() => {
+    if (!ingredientsLines.length || scaleMultiplier === 1) {
+      return ingredientsLines;
+    }
+    const numberPattern = /^(\d+(?:\.\d+)?|\d+\/\d+)\b/;
+    return ingredientsLines.map((line) => {
+      const match = line.match(numberPattern);
+      if (!match) return line;
+      const raw = match[1];
+      let value: number | null = null;
+      if (raw.includes("/")) {
+        const [a, b] = raw.split("/");
+        const num = parseFloat(a);
+        const den = parseFloat(b);
+        if (!Number.isNaN(num) && !Number.isNaN(den) && den !== 0) {
+          value = num / den;
+        }
+      } else {
+        const num = parseFloat(raw);
+        if (!Number.isNaN(num)) value = num;
+      }
+      if (value == null) return line;
+      const scaled = value * scaleMultiplier;
+      const formatted =
+        scaled % 1 === 0 ? String(scaled) : scaled.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      return line.replace(numberPattern, formatted);
+    });
+  }, [ingredientsLines, scaleMultiplier]);
 
   return (
     <div className="space-y-8">
@@ -446,14 +557,59 @@ export default function RecipeDetailPage() {
               </div>
             ) : null}
 
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brown-100 bg-cream-50 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-brown-700">
+                  Servings
+                </span>
+                <div className="inline-flex items-center gap-2 rounded-full border border-brown-200 bg-white px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setScaleMultiplier((prev) =>
+                        prev <= 0.5 ? 0.5 : Number((prev - 0.5).toFixed(2)),
+                      )
+                    }
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold text-brown-700 hover:bg-cream-100"
+                    aria-label="Decrease servings"
+                  >
+                    -
+                  </button>
+                  <span className="min-w-[3rem] text-center text-sm text-brown-800">
+                    × {scaleMultiplier.toFixed(1).replace(/\.0$/, "")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setScaleMultiplier((prev) =>
+                        prev >= 4 ? 4 : Number((prev + 0.5).toFixed(2)),
+                      )
+                    }
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold text-brown-700 hover:bg-cream-100"
+                    aria-label="Increase servings"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCookModeDialogOpen(true)}
+                className="rounded-full border border-sage-400 bg-sage-50 px-3 py-1.5 text-xs font-semibold text-sage-800 shadow-sm hover:bg-sage-100"
+              >
+                Cook Mode
+              </button>
+            </div>
+
             <div className="mt-6 grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-brown-700">
                   Ingredients
                 </h2>
-                {ingredientsLines.length ? (
+                {scaledIngredientsLines.length ? (
                   <ul className="space-y-1 text-sm text-brown-800">
-                    {ingredientsLines.map((line: string, index: number) => (
+                    {scaledIngredientsLines.map((line: string, index: number) => (
                       <li key={`${line}-${index}`} className="flex gap-2">
                         <span className="mt-1 h-1.5 w-1.5 rounded-full bg-brown-400" />
                         <span>{line}</span>
@@ -769,6 +925,79 @@ export default function RecipeDetailPage() {
           </form>
         )}
       </section>
+
+      {isCookModeDialogOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-lg">
+            <h2 className="text-sm font-semibold text-brown-900">
+              Cook Mode
+            </h2>
+            <p className="mt-2 text-xs text-brown-600">
+              Cook Mode keeps your screen awake and uses large text. Click X to
+              exit.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCookModeDialogOpen(false)}
+                className="rounded-full border border-brown-200 px-3 py-1.5 text-xs font-medium text-brown-700 hover:bg-brown-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={startCookMode}
+                className="rounded-full bg-sage-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sage-700"
+              >
+                Start
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCookModeActive && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-brown-900 text-cream">
+          <div className="flex items-center justify-between border-b border-brown-700 px-4 py-3">
+            <h2 className="text-lg font-semibold">Cook Mode</h2>
+            <button
+              type="button"
+              onClick={stopCookMode}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-cream/40 text-2xl font-bold text-cream hover:bg-cream/10"
+              aria-label="Exit Cook Mode"
+            >
+              ×
+            </button>
+          </div>
+          <div className="flex-1 space-y-8 overflow-y-auto px-6 py-6">
+            <section>
+              <h3 className="text-base font-semibold uppercase tracking-wide text-cream/80">
+                Ingredients
+              </h3>
+              <ul className="mt-4 space-y-3 text-2xl leading-relaxed">
+                {scaledIngredientsLines.map((line, index) => (
+                  <li key={`cook-ingredient-${index}`}>{line}</li>
+                ))}
+              </ul>
+            </section>
+            <section>
+              <h3 className="text-base font-semibold uppercase tracking-wide text-cream/80">
+                Instructions
+              </h3>
+              <ol className="mt-4 space-y-4 text-2xl leading-relaxed">
+                {instructionsLines.map((line, index) => (
+                  <li key={`cook-step-${index}`}>
+                    <span className="mr-2 text-cream/70">
+                      {index + 1}.
+                    </span>
+                    {line}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
