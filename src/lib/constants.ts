@@ -1,7 +1,7 @@
 export const VIBES = [
   "Home Classic",
   "Comfort Food",
-  "Under 20 Mins",
+  "< 30 Mins",
   "Meal Prep",
   "Appetizers",
   "Dessert",
