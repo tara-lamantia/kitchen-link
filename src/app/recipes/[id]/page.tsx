@@ -483,7 +483,7 @@ export default function RecipeDetailPage() {
                   htmlFor="vibe"
                   className="block text-sm font-medium text-brown-700"
                 >
-                  Vibe
+                  Category
                 </label>
                 <select
                   id="vibe"
@@ -504,7 +504,7 @@ export default function RecipeDetailPage() {
                   htmlFor="setup"
                   className="block text-sm font-medium text-brown-700"
                 >
-                  Setup
+                  Appliances
                 </label>
                 <select
                   id="setup"

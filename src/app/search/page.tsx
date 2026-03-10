@@ -44,8 +44,8 @@ export default function SearchPage() {
           What can you cook tonight?
         </h1>
         <p className="max-w-2xl text-sm text-brown-600">
-          Filter the community recipes by vibe and kitchen setup to match your
-          current time, energy, and appliances.
+          Filter the community recipes by category and appliances to match your
+          current time, energy, and tools.
         </p>
       </div>
 
@@ -55,7 +55,7 @@ export default function SearchPage() {
             htmlFor="vibe"
             className="text-xs font-medium uppercase tracking-wide text-brown-700"
           >
-            Vibe
+            Category
           </label>
           <select
             id="vibe"
@@ -77,7 +77,7 @@ export default function SearchPage() {
             htmlFor="setup"
             className="text-xs font-medium uppercase tracking-wide text-brown-700"
           >
-            Setup
+            Appliances
           </label>
           <select
             id="setup"

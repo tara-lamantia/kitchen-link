@@ -66,10 +66,8 @@ export default function Home() {
           Community Kitchen
         </h1>
         <p className="max-w-2xl text-sm text-brown-600 sm:text-base">
-          A private feed of real meals from the people you trust. Built for{" "}
-          <span className="font-semibold text-brown-700">
-            small kitchens, tight budgets, and busy weeks.
-          </span>
+          A private space for sharing quality recipes curated for small
+          kitchens and busy weeks.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap gap-2">

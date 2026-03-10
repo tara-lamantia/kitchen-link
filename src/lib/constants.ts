@@ -1,16 +1,19 @@
 export const VIBES = [
   "Home Classic",
-  "Quick Prep",
-  "Healthy",
-  "Late Night",
-  "Meal Prep Sunday",
   "Comfort Food",
-  "Snack Attack",
+  "Under 20 Mins",
+  "Meal Prep",
 ] as const;
 
 export type Vibe = (typeof VIBES)[number];
 
-export const SETUPS = ["One-Pot", "Microwave Only", "Full Kitchen"] as const;
+export const SETUPS = [
+  "One-Pot / Slow Cooker",
+  "Air Fryer",
+  "Toaster Oven",
+  "Small Appliance",
+  "Full Kitchen",
+] as const;
 
 export type Setup = (typeof SETUPS)[number];
 
