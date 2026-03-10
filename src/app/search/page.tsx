@@ -38,22 +38,34 @@ export default function SearchPage() {
   const [setup, setSetup] = React.useState<string>("");
   const [tag, setTag] = React.useState<string>("");
 
+  const parseTags = React.useCallback((raw?: string | null): string[] => {
+    if (!raw) return [];
+    const trimmed = raw.trim();
+    // If it looks like JSON, try to parse, otherwise fall back to comma-separated text
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      try {
+        const t = JSON.parse(trimmed);
+        if (Array.isArray(t)) {
+          return t
+            .map((v) => (typeof v === "string" ? v : ""))
+            .filter(Boolean);
+        }
+        return [];
+      } catch {
+        return [];
+      }
+    }
+    return trimmed
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }, []);
+
   const filtered = recipes.filter((recipe) => {
     if (vibe && recipe.vibe !== vibe) return false;
     if (setup && recipe.setup !== setup) return false;
     if (tag) {
-      if (!recipe.tags) return false;
-      let parsed: string[] = [];
-      try {
-        const t = JSON.parse(recipe.tags);
-        if (Array.isArray(t)) {
-          parsed = t
-            .map((v) => (typeof v === "string" ? v : ""))
-            .filter(Boolean);
-        }
-      } catch {
-        parsed = [];
-      }
+      const parsed = parseTags(recipe.tags);
       if (!parsed.includes(tag)) return false;
     }
     return true;

@@ -41,6 +41,29 @@ type Recipe = {
   ratings?: { id: string; stars: number; user?: { id: string } | null }[];
 };
 
+function parseTags(raw?: string | null): string[] {
+  if (!raw) return [];
+  const trimmed = raw.trim();
+  // If it looks like JSON, try to parse, otherwise fall back to comma-separated text
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      const t = JSON.parse(trimmed);
+      if (Array.isArray(t)) {
+        return t
+          .map((v) => (typeof v === "string" ? v : ""))
+          .filter(Boolean);
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
+  return trimmed
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
 export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -169,16 +192,35 @@ export default function RecipeDetailPage() {
         const formData = new FormData();
         formData.append("file", imageFile);
 
-        const res = await fetch("/api/recipe-image", {
-          method: "POST",
-          body: formData,
-        });
+        try {
+          const res = await fetch("/api/recipe-image", {
+            method: "POST",
+            body: formData,
+          });
 
-        const json = (await res.json()) as { url?: string; error?: string };
-        if (!res.ok || !json.url) {
-          throw new Error(json.error || "Failed to upload image.");
+          let json: { url?: string; error?: string } | null = null;
+          try {
+            json = (await res.json()) as { url?: string; error?: string };
+          } catch {
+            json = null;
+          }
+
+          if (!res.ok || !json?.url) {
+            throw new Error(
+              json?.error ||
+                "We couldn't upload this photo. Your changes will still save without it.",
+            );
+          }
+          imageUrl = json.url;
+        } catch (uploadErr: unknown) {
+          const message =
+            (uploadErr as { message?: string })?.message ||
+            "We couldn't upload this photo. Your changes will still save without it.";
+          setImageError(message);
+          // Continue without blocking recipe save
+        } finally {
+          setIsUploadingImage(false);
         }
-        imageUrl = json.url;
       }
 
       await db.transact(
@@ -204,7 +246,6 @@ export default function RecipeDetailPage() {
       }
     } finally {
       setIsSavingEdit(false);
-      setIsUploadingImage(false);
     }
   };
 
@@ -312,19 +353,7 @@ export default function RecipeDetailPage() {
     }
   };
 
-  let parsedTags: string[] = [];
-  if (recipe?.tags) {
-    try {
-      const t = JSON.parse(recipe.tags);
-      if (Array.isArray(t)) {
-        parsedTags = t
-          .map((v) => (typeof v === "string" ? v : ""))
-          .filter(Boolean);
-      }
-    } catch {
-      parsedTags = [];
-    }
-  }
+  const parsedTags = parseTags(recipe?.tags ?? null);
 
   const handleRate = async (stars: number) => {
     if (!id || !user) return;
