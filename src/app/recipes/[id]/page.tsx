@@ -4,6 +4,7 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { id as instantId } from "@instantdb/react";
 import { db } from "@/lib/db";
+import { compressImageForUpload } from "@/lib/compress-image";
 import { NotesList } from "@/components/NotesList";
 import { SETUPS, VIBES } from "@/lib/constants";
 
@@ -190,7 +191,8 @@ export default function RecipeDetailPage() {
       if (imageFile) {
         setIsUploadingImage(true);
         const formData = new FormData();
-        formData.append("file", imageFile);
+        const fileToUpload = await compressImageForUpload(imageFile);
+        formData.append("file", fileToUpload);
         try {
           const res = await fetch("/api/recipe-image", {
             method: "POST",
