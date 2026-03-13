@@ -160,6 +160,332 @@ export default function RecipeDetailPage() {
     }
   }, [recipe, isEditing]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!id) return;
+    try {
+      window.localStorage.setItem(
+        `kitchen-link:servings:${id}`,
+        String(servingMultiplier),
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [id, servingMultiplier]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    async function requestWakeLock() {
+      if (typeof navigator === "undefined") return;
+      const wakeLockApi = (navigator as unknown as {
+        wakeLock?: { request?: (type: "screen") => Promise<unknown> };
+      }).wakeLock;
+      if (!wakeLockApi || typeof wakeLockApi.request !== "function") return;
+      try {
+        const sentinel = await wakeLockApi.request("screen");
+        if (!active) {
+          // If effect was cleaned up before the promise resolved, release immediately
+          // @ts-expect-error optional release
+          sentinel.release?.();
+          return;
+        }
+        wakeLockRef.current = sentinel;
+      } catch {
+        // Ignore wake lock failures (unsupported or denied)
+      }
+    }
+
+    if (isCookMode) {
+      requestWakeLock();
+    } else {
+      const current = wakeLockRef.current as { release?: () => Promise<void> } | null;
+      if (current && typeof current.release === "function") {
+        current.release().catch(() => {});
+      }
+      wakeLockRef.current = null;
+    }
+
+    return () => {
+      active = false;
+      const current = wakeLockRef.current as { release?: () => Promise<void> } | null;
+      if (current && typeof current.release === "function") {
+        current.release().catch(() => {});
+      }
+      wakeLockRef.current = null;
+    };
+  }, [isCookMode]);
+
+  React.useEffect(() => {
+    if (!isCookMode && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop?.();
+      } catch {
+        // ignore
+      } finally {
+        setIsVoiceListening(false);
+        setWantsVoiceListening(false);
+        wantsVoiceListeningRef.current = false;
+        recognitionRef.current = null;
+      }
+    }
+  }, [isCookMode]);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handleVisibility = () => {
+      if (document.hidden && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop?.();
+        } catch {
+          // ignore
+        } finally {
+          setIsVoiceListening(false);
+          setWantsVoiceListening(false);
+          wantsVoiceListeningRef.current = false;
+          recognitionRef.current = null;
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const body = document.body;
+    if (!body) return;
+
+    const previousOverflow = body.style.overflow;
+
+    if (isCookMode) {
+      body.style.overflow = "hidden";
+    }
+
+    return () => {
+      body.style.overflow = previousOverflow || "";
+    };
+  }, [isCookMode]);
+
+  function ensureSpeechRecognition(): any | null {
+    if (typeof window === "undefined") return null;
+    const AnyWindow = window as unknown as {
+      SpeechRecognition?: new () => any;
+      webkitSpeechRecognition?: new () => any;
+    };
+    const Ctor =
+      AnyWindow.SpeechRecognition || AnyWindow.webkitSpeechRecognition;
+    if (!Ctor) return null;
+    if (!recognitionRef.current) {
+      const rec = new Ctor() as any;
+      rec.continuous = true;
+      rec.interimResults = false;
+      rec.lang = "en-US";
+      // continuous: true keeps listening after each result (only stop on manual Off or exit Cook Mode)
+      rec.onresult = (event: any) => {
+        const lastIndex = event.results.length - 1;
+        if (lastIndex < 0) return;
+        const transcript = event.results[lastIndex][0]?.transcript ?? "";
+        if (!transcript) return;
+        voiceCommandHandlerRef.current(transcript);
+      };
+      rec.onerror = () => {
+        setIsVoiceListening(false);
+      };
+      rec.onend = () => {
+        if (wantsVoiceListeningRef.current && isCookModeRef.current) {
+          try {
+            rec.start();
+            setIsVoiceListening(true);
+            return;
+          } catch {
+            // fall through
+          }
+        }
+        setIsVoiceListening(false);
+        wantsVoiceListeningRef.current = false;
+        setWantsVoiceListening(false);
+      };
+      recognitionRef.current = rec;
+    }
+    return recognitionRef.current;
+  }
+
+  const stopVoiceRecognition = React.useCallback(() => {
+    try {
+      const rec = recognitionRef.current;
+      if (rec) {
+        rec.stop();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsVoiceListening(false);
+      setWantsVoiceListening(false);
+      wantsVoiceListeningRef.current = false;
+      recognitionRef.current = null;
+    }
+  }, []);
+
+  const exitCookMode = React.useCallback(() => {
+    stopVoiceRecognition();
+    setIsCookMode(false);
+  }, [stopVoiceRecognition]);
+
+  function handleVoiceCommand(raw: string) {
+    const phrase = raw.toLowerCase().trim();
+    if (!phrase) return;
+    if (phrase.includes("exit cook mode") || phrase.includes("exit")) {
+      exitCookMode();
+    }
+  }
+
+  voiceCommandHandlerRef.current = handleVoiceCommand;
+
+  const handleToggleVoice = () => {
+    if (!voiceCommandsEnabled) {
+      setVoiceMessage("Enable Voice Commands in your Profile to use this.");
+      setTimeout(() => setVoiceMessage(null), 2500);
+      return;
+    }
+    if (isVoiceListening) {
+      stopVoiceRecognition();
+      return;
+    }
+    const rec = ensureSpeechRecognition();
+    if (!rec) {
+      setVoiceMessage("Voice recognition is not supported in this browser.");
+      setTimeout(() => setVoiceMessage(null), 3000);
+      return;
+    }
+    try {
+      rec.start();
+      setIsVoiceListening(true);
+      setWantsVoiceListening(true);
+      wantsVoiceListeningRef.current = true;
+      setVoiceMessage(null);
+    } catch {
+      setVoiceMessage("Could not start microphone. Check browser settings.");
+      setIsVoiceListening(false);
+    }
+  };
+
+  function ensureAudioContext(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    try {
+      let ctx = audioContextRef.current;
+      if (!ctx) {
+        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctx) return null;
+        ctx = new Ctx({ latencyHint: "playback" });
+        audioContextRef.current = ctx;
+        const masterGain = ctx.createGain();
+        masterGain.gain.value = ALARM_MASTER_GAIN;
+        masterGain.connect(ctx.destination);
+        masterGainRef.current = masterGain;
+      }
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+      return ctx;
+    } catch {
+      return null;
+    }
+  }
+
+  function startSilentLoop() {
+    try {
+      const ctx = ensureAudioContext();
+      const masterGain = masterGainRef.current;
+      if (!ctx || !masterGain) return;
+      if (silentLoopSourceRef.current) return;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.01;
+      gain.connect(masterGain);
+      silentLoopGainRef.current = gain;
+
+      // 1 second near-silent buffer loop to keep audio “active” after user gesture
+      const sampleRate = ctx.sampleRate || 44100;
+      const frames = Math.max(1, Math.floor(sampleRate * 1));
+      const buffer = ctx.createBuffer(1, frames, sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * 0.00001;
+
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      src.connect(gain);
+      src.start();
+      silentLoopSourceRef.current = src;
+    } catch {
+      // ignore
+    }
+  }
+
+  function stopSilentLoop() {
+    try {
+      const src = silentLoopSourceRef.current;
+      if (src) {
+        src.stop();
+        src.disconnect();
+      }
+    } catch {
+      // ignore
+    } finally {
+      silentLoopSourceRef.current = null;
+      try {
+        silentLoopGainRef.current?.disconnect();
+      } catch {
+        // ignore
+      }
+      silentLoopGainRef.current = null;
+    }
+  }
+
+  function playDing() {
+    try {
+      const ctx = audioContextRef.current ?? ensureAudioContext();
+      const masterGain = masterGainRef.current;
+      if (!ctx || !masterGain) return;
+      const now = ctx.currentTime;
+      const dingLen = 0.42;
+      const gap = 0.4;
+      [0, 1, 2].forEach((i) => {
+        const t0 = now + i * (dingLen + gap);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.frequency.value = 1000;
+        osc.type = "square";
+        // Keep per-beep gain modest; master gain does the heavy lift.
+        gain.gain.setValueAtTime(0.18, t0);
+        gain.gain.exponentialRampToValueAtTime(0.01, t0 + dingLen);
+        osc.start(t0);
+        osc.stop(t0 + dingLen);
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+
+  React.useEffect(() => {
+    if (isCookMode) startSilentLoop();
+    return () => {
+      stopSilentLoop();
+    };
+  }, [isCookMode]);
+
+  React.useEffect(() => {
+    return () => {
+      stopVoiceRecognition();
+    };
+  }, []);
+
   const isOwner =
     !!user && !!recipe?.author && recipe.author.id === user.id;
 
@@ -432,6 +758,248 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="space-y-8">
+      {isCookMode && (
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "#FAF9F6",
+            animation: undefined,
+          }}
+        >
+          <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: "rgba(0, 0, 0, 0.03)" }} aria-hidden />
+          <div className="relative flex flex-col flex-1 min-h-0" style={{ color: "#333333" }}>
+          <div className="flex items-center justify-between border-b border-gray-300 px-4 py-3">
+            <div>
+              <h1 className="text-lg font-semibold" style={{ color: "#333333" }}>{recipe.title}</h1>
+              <span className="block text-xs font-medium" style={{ color: "#333333" }}>
+                Servings: {formatScaledAmount(servingMultiplier)}×
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleVoice}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-full border text-xs font-medium transition-colors ${
+                isVoiceListening
+                  ? "border-red-500 bg-red-600 text-white shadow-[0_0_0_3px_rgba(220,38,38,0.45)]"
+                  : voiceCommandsEnabled
+                    ? "border-gray-500 text-gray-800"
+                    : "border-gray-300 text-gray-400"
+              }`}
+              aria-pressed={isVoiceListening}
+              aria-label="Toggle voice commands"
+            >
+              <span
+                className={`inline-flex items-center justify-center ${
+                  isVoiceListening ? "animate-pulse" : ""
+                }`}
+              >
+                {isVoiceListening ? "●" : "◎"}
+              </span>
+            </button>
+          </div>
+          <div className="border-b border-gray-200 px-4 py-3 space-y-1.5" style={{ backgroundColor: "rgba(0,0,0,0.04)" }}>
+            <p className="text-[11px] leading-snug" style={{ color: "#333333" }}>
+              Tap any time in the instructions below to set the timer, or enter your own.
+            </p>
+            <CookModeTimer
+              ref={cookModeTimerRef}
+              formatTimerSeconds={formatTimerSeconds}
+              ensureAudioContext={ensureAudioContext}
+              startSilentLoop={startSilentLoop}
+              playDing={playDing}
+            />
+            {isVoiceListening && (
+              <div className="mt-2 rounded-xl bg-red-600 px-3 py-2 text-center text-[11px] font-semibold text-white shadow-sm">
+                Voice Command: Say "Exit Cook Mode" to go back.
+              </div>
+            )}
+            {voiceMessage && (
+              <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                {voiceMessage}
+              </div>
+            )}
+            <p className="text-[11px] leading-snug" style={{ color: "#333333" }}>
+              Timer alerts only work while Cook Mode is open and your screen is on. If the screen locks or the app is closed, the ding and vibration may not fire.
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#333333" }}>
+                Step {instructionsLines.length ? cookStepIndex + 1 : 0} of {instructionsLines.length}
+              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCookIngredients((prev) => !prev)}
+                  className="rounded-full border border-gray-400 px-3 py-1 text-[11px] font-medium"
+                  style={{ color: "#333333" }}
+                >
+                  {showCookIngredients ? "Hide ingredients" : "Peek ingredients"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAllSteps((prev) => !prev)}
+                  className="rounded-full border border-gray-400 px-3 py-1 text-[11px] font-medium"
+                  style={{ color: "#333333" }}
+                >
+                  {showAllSteps ? "Hide all steps" : "View all steps"}
+                </button>
+              </div>
+            </div>
+
+            {showCookIngredients && (
+              <div className="space-y-2 rounded-2xl border border-gray-200 bg-white/70 px-3 py-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#333333" }}>
+                  Ingredients
+                </h3>
+                {displayIngredientsList.length > 0 ? (
+                  <ul className="mt-1 space-y-1.5 text-sm" style={{ color: "#333333" }}>
+                    {displayIngredientsList.map((row, index) => {
+                      const scaledAmount = row.amount * servingMultiplier;
+                      const amountStr =
+                        row.amount === 0 && !row.unit.trim()
+                          ? ""
+                          : formatScaledAmount(scaledAmount);
+                      const line =
+                        row.amount === 0 && !row.unit.trim()
+                          ? row.name.trim()
+                          : [amountStr, row.unit, row.name]
+                              .filter(Boolean)
+                              .join(" ")
+                              .trim() || "";
+                      return (
+                        <li key={`${row.name}-${index}`} className="flex gap-2">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-gray-500" />
+                          <span>{line}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-xs" style={{ color: "#333333" }}>
+                    No structured ingredients available.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "#333333" }}>
+                Instructions
+              </h2>
+              {currentCookLine ? (
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <span className="mt-1 text-base font-semibold" style={{ color: "#333333" }}>
+                      {cookStepIndex + 1}.
+                    </span>
+                    <div className="flex flex-wrap items-baseline gap-1 text-2xl font-semibold leading-relaxed" style={{ color: "#333333" }}>
+                      {instructionSegments(currentCookLine).map((seg, i) =>
+                        seg.type === "text" ? (
+                          <span key={i}>{seg.value}</span>
+                        ) : (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              cookModeTimerRef.current?.setTimer(seg.seconds);
+                            }}
+                            className="rounded bg-gray-200 px-1.5 py-0.5 text-lg font-semibold underline decoration-gray-500 underline-offset-2 hover:bg-gray-300"
+                          >
+                            {seg.value}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+
+                  {nextCookLine && (
+                    <div className="ml-7 flex gap-2 text-sm text-gray-600">
+                      <span className="mt-0.5">Next:</span>
+                      <span className="flex flex-wrap gap-1 opacity-80">
+                        {instructionSegments(nextCookLine).map((seg, i) =>
+                          seg.type === "text" ? (
+                            <span key={i}>{seg.value}</span>
+                          ) : (
+                            <span key={i}>{seg.value}</span>
+                          ),
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm" style={{ color: "#333333" }}>
+                  No instructions yet.
+                </p>
+              )}
+            </div>
+
+            {showAllSteps && instructionsLines.length > 0 && (
+              <div className="space-y-2 rounded-2xl border border-gray-200 bg-white/70 px-3 py-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#333333" }}>
+                  All steps
+                </h3>
+                <ol className="mt-1 max-h-56 space-y-2 overflow-y-auto pr-1 text-sm" style={{ color: "#333333" }}>
+                  {instructionsLines.map((line, index) => (
+                    <li key={`${line}-${index}`} className="flex gap-2">
+                      <span className="mt-0.5 text-xs font-semibold">{index + 1}.</span>
+                      <span className="flex-1 leading-snug opacity-90">
+                        {line}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+          <div className="sticky bottom-0 border-t border-gray-200 px-4 py-3 space-y-2" style={{ backgroundColor: "rgba(249, 247, 242, 0.95)" }}>
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setCookStepIndex((prev) => (prev > 0 ? prev - 1 : prev))
+                }
+                disabled={cookStepIndex === 0}
+                className="flex-1 rounded-full border border-gray-400 px-4 py-2 text-sm font-medium text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCookStepIndex((prev) =>
+                    prev < Math.max(instructionsLines.length - 1, 0)
+                      ? prev + 1
+                      : prev,
+                  )
+                }
+                disabled={
+                  !instructionsLines.length ||
+                  cookStepIndex >= instructionsLines.length - 1
+                }
+                className="flex-1 rounded-full bg-sage-600 px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-sage-400"
+              >
+                Next
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCookMode(false)}
+              className="block w-full rounded-full px-4 py-2.5 text-sm font-semibold text-white shadow-md"
+              style={{ backgroundColor: "#333333" }}
+            >
+              Exit Cook Mode
+            </button>
+          </div>
+          </div>
+        </div>
+      )}
       <section className="rounded-2xl border border-brown-200 bg-white p-6 shadow-sm">
         {!isEditing ? (
           <>
